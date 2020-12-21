@@ -1,0 +1,88 @@
+# Makefile for um (Comp 40 Assignment 6)
+
+############## Variables ###############
+
+CC = gcc # The compiler being used
+
+# Updating include path to use Comp 40 .h files and CII interfaces
+IFLAGS = -I. -I/comp/40/build/include -I/usr/sup/cii40/include/cii
+
+# Compile flags
+# Set debugging information, allow the c99 standard,
+# max out warnings, and use the updated include path
+CFLAGS = -g -std=c99 -Wall -Wextra -Werror -Wfatal-errors -pedantic $(IFLAGS)
+
+# Linking flags
+# Set debugging information and update linking path
+# to include course binaries and CII implementations
+LDFLAGS = -g -L/comp/40/build/lib -L/usr/sup/cii40/lib64
+
+# Libraries needed for linking
+# Both programs need cii40 (Hanson binaries) and *may* need -lm (math)
+# Only brightness requires the binary for pnmrdr.
+LDLIBS = -lpnmrdr -lcii40 -lm
+
+# Collect all .h files in your directory.
+# This way, you can never forget to add
+# a local .h file in your dependencies.
+#
+# This bugs Mark, who dislikes false dependencies, but
+# he agrees with Noah that you'll probably spend hours
+# debugging if you forget to put .h files in your
+# dependency list.
+INCLUDES = $(shell echo *.h)
+
+############### Rules ###############
+
+# makes each target and the dependency list is every target you want to make
+# eliminates the problem with multiple points of truth
+all: writetests el
+
+## Compile step (.c files -> .o files)
+
+# To get/make *any* .o file, compile its .c file with the following rule.
+%.o: %.c $(INCLUDES)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+	# .o is result of compiler and assembler to create a portable object file
+	# not linked until targets and dependecies are created
+	# -c is compile and CFLAGS means compile flags, indicates linking not done yet
+
+# stages of compiling
+	# preprocessor
+	# compiler --> executable source to assembly
+		# -- translation of source code is done here --
+	# assembler --> assembly to machine
+	# links machine object code + libraries etc --> executable (overlooks)
+		#undefined reference to
+		#unable to link everything together (hide and seek failure)
+
+
+## Linking step (.o -> executable program)
+
+# target: dependencies.o //builds a tree recursively to check all the targets babies before self
+# 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+writetests: umlabwrite.o umlab.o bitpack.o
+	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+	# $() dereferences in a sense, want content rather than string literal
+	# LDFLAGS is locations of libraries and directories access 40 specific info
+	# $^ metavariable will copy and paste all dependencies
+	# -o meaning right before executable name
+	# $@ name of target
+	# $(LDLIBS) is names of libraries and directories
+
+# operations: operations.o bitpack.o registers.o memory.o
+# 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+el: execution-loop.o operations.o memory.o registers.o bitpack.o
+	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+# memory: memory.o bitpack.o
+# 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+#
+# registers: registers.o
+# 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+clean:
+	rm -f el operations memory registers writetests *.o
